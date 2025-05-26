@@ -1,0 +1,105 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-10 mx-auto">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h2 class="mb-0">{{ isEditMode ? 'Editar' : 'Crear' }} Rutina de Aprendizaje</h2>
+        </div>
+        <div class="card-body">
+          <div *ngIf="loading" class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Cargando...</span>
+            </div>
+          </div>
+
+          <div *ngIf="error" class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ error }}
+            <button type="button" class="btn-close" (click)="error = ''" aria-label="Close"></button>
+          </div>
+
+          <form [formGroup]="routineForm" (ngSubmit)="onSubmit()" *ngIf="!loading">
+            <!-- Datos básicos de la rutina -->
+            <div *ngIf="userInterests.length === 0 && !loading" class="alert alert-warning mt-2">
+              No hay intereses definidos en tu perfil. <a [routerLink]="['/profile']">Ir a configurar perfil</a>
+            </div>
+
+            <!-- Actividades -->
+            <div class="mt-4 mb-3">
+              <h4>Actividades</h4>
+              <div formArrayName="activities">
+                <div *ngFor="let activity of activitiesArray.controls; let i = index" class="card mb-3">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Actividad {{ i + 1 }}</h5>
+                    <div *ngIf="activitiesArray.controls[i].get('interestId')?.value" class="text-muted small">
+                      <ng-container *ngFor="let interest of userInterests">
+                        <span *ngIf="interest._id === activitiesArray.controls[i].get('interestId')?.value">
+                          {{ calculateTotalHoursForInterest(interest._id).toFixed(1) }} / {{ interest.hoursPerWeek }} horas disponibles
+                        </span>
+                      </ng-container>
+                    </div>
+                  </div>
+                  <div class="card-body" [formGroupName]="i">
+                    <div class="row mb-3">
+                      <div class="col-md-3">
+                        <label class="form-label">Interés</label>
+                        <select class="form-select" formControlName="interestId">
+                          <option value="">Selecciona</option>
+                          <option *ngFor="let interest of userInterests" [value]="interest._id">{{ interest.name }}</option>
+                        </select>
+                        <div *ngIf="activitiesArray.controls[i].get('interestId')?.invalid && activitiesArray.controls[i].get('interestId')?.touched" class="text-danger">
+                          El interés es requerido
+                        </div>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Día</label>
+                        <select class="form-select" formControlName="day">
+                          <option value="Lunes">Lunes</option>
+                          <option value="Martes">Martes</option>
+                          <option value="Miércoles">Miércoles</option>
+                          <option value="Jueves">Jueves</option>
+                          <option value="Viernes">Viernes</option>
+                          <option value="Sábado">Sábado</option>
+                          <option value="Domingo">Domingo</option>
+                        </select>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Inicio</label>
+                        <input type="time" class="form-control" formControlName="startTime">
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label">Fin</label>
+                        <input type="time" class="form-control" formControlName="endTime">
+                      </div>
+                      <div class="col-md-3 d-flex align-items-end gap-2">
+                        <button type="button" class="btn btn-success mb-2" (click)="validateAndAddActivity(i)">
+                          <i class="bi bi-plus-circle"></i> Crear
+                        </button>
+                        <button type="button" class="btn btn-danger mb-2" (click)="removeActivity(i)" [disabled]="activitiesArray.length === 1">
+                          <i class="bi bi-trash"></i> Eliminar
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+                
+                <div class="alert alert-info mb-4">
+                  <i class="bi bi-info-circle"></i> Usa el botón "Crear" en cada actividad para añadir más actividades a tu rutina.
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+              <button type="button" class="btn btn-secondary" (click)="cancel()">
+                <i class="bi bi-x-circle"></i> Cancelar
+              </button>
+              <button type="submit" class="btn btn-primary" [disabled]="routineForm.invalid || submitting">
+                <i class="bi bi-save"></i> {{ isEditMode ? 'Actualizar' : 'Crear' }} Rutina
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

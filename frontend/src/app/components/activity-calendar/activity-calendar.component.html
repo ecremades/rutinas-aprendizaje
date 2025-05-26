@@ -1,0 +1,125 @@
+<div class="container mt-4">
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h2>Calendario de Actividades</h2>
+      <p class="text-muted">Vista semanal de todas tus actividades de aprendizaje</p>
+    </div>
+    <div class="col-md-4 text-end">
+      <button class="btn btn-outline-primary" [routerLink]="['/routines']">
+        <i class="bi bi-arrow-left"></i> Volver a Rutinas
+      </button>
+    </div>
+  </div>
+  
+  <!-- Filtros de intereses -->
+  <div class="row mb-3" *ngIf="!loading && interests.length > 0">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Filtrar por interés</h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex flex-wrap gap-2">
+            <button 
+              class="btn" 
+              [ngClass]="{'btn-primary': selectedInterestId === '', 'btn-outline-primary': selectedInterestId !== ''}" 
+              (click)="filterByInterest('')">
+              Todos
+            </button>
+            <button 
+              *ngFor="let interest of interests" 
+              class="btn" 
+              [ngClass]="{'btn-primary': selectedInterestId === interest.id, 'btn-outline-primary': selectedInterestId !== interest.id}" 
+              (click)="filterByInterest(interest.id)">
+              {{ interest.name }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center my-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ error }}
+    <button type="button" class="btn-close" (click)="error = ''" aria-label="Close"></button>
+  </div>
+
+  <!-- Sin actividades -->
+  <div *ngIf="!loading && activities.length === 0" class="text-center my-5">
+    <div class="alert alert-info">
+      <h4>No tienes actividades programadas</h4>
+      <p>Crea tu primera rutina de aprendizaje con actividades</p>
+      <button class="btn btn-primary mt-2" [routerLink]="['/routine-editor']">
+        <i class="bi bi-plus-circle"></i> Nueva Rutina
+      </button>
+    </div>
+  </div>
+
+  <!-- Resumen de horas por interés -->
+  <div *ngIf="!loading && filteredActivities.length > 0" class="card mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">Resumen de horas {{ selectedInterestId ? 'para el interés seleccionado' : 'por interés' }}</h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <h6>Horas totales por día:</h6>
+          <ul class="list-group">
+            <li *ngFor="let day of weekDays" class="list-group-item d-flex justify-content-between align-items-center">
+              {{ day }}
+              <span class="badge bg-primary rounded-pill">{{ getHoursForDay(day) }} horas</span>
+            </li>
+          </ul>
+        </div>
+        <div class="col-md-6" *ngIf="!selectedInterestId && interests.length > 0">
+          <h6>Horas totales por interés:</h6>
+          <ul class="list-group">
+            <li *ngFor="let interest of interests" class="list-group-item d-flex justify-content-between align-items-center">
+              {{ interest.name }}
+              <span class="badge bg-primary rounded-pill">{{ getHoursForInterest(interest.id) }} horas</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Vista de calendario -->
+  <div *ngIf="!loading && filteredActivities.length > 0" class="card">
+    <div class="card-header bg-primary text-white">
+      <h3 class="mb-0">Calendario Semanal</h3>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-bordered">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 10%">Hora</th>
+              <th *ngFor="let day of weekDays" style="width: 12.85%">{{ day }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let timeSlot of timeSlots">
+              <td class="text-center fw-bold">{{ timeSlot }}</td>
+              <td *ngFor="let day of weekDays" class="position-relative calendar-cell">
+                <div *ngIf="hasActivityAtTimeSlot(day, timeSlot)" class="p-1">
+                  <!-- Mostrar solo la primera actividad para evitar repeticiones -->
+                  <div class="activity-name">
+                    {{ getFirstActivityName(day, timeSlot) }}
+                  </div>
+                  <a [routerLink]="['/routine', getFirstActivityRoutineId(day, timeSlot)]" class="stretched-link"></a>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

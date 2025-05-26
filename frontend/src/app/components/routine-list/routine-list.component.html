@@ -1,0 +1,113 @@
+<div class="container mt-4">
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <h2>Mis Rutinas de Aprendizaje</h2>
+    </div>
+    <div class="col-md-4 text-end">
+      <button class="btn btn-outline-primary me-2" [routerLink]="['/activity-calendar']">
+        <i class="bi bi-calendar-week"></i> Actividades
+      </button>
+      <button class="btn btn-primary" (click)="createNewRoutine()">
+        <i class="bi bi-plus-circle"></i> Nueva Rutina
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center my-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Cargando...</span>
+    </div>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger alert-dismissible fade show" role="alert">
+    {{ error }}
+    <button type="button" class="btn-close" (click)="error = ''" aria-label="Close"></button>
+  </div>
+
+  <!-- Modal de confirmación para eliminar -->
+  <div class="modal fade show" tabindex="-1" *ngIf="deleteId" style="display: block; background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirmar eliminación</h5>
+          <button type="button" class="btn-close" (click)="cancelDelete()" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>¿Estás seguro de que deseas eliminar esta rutina? Esta acción no se puede deshacer.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="cancelDelete()">Cancelar</button>
+          <button type="button" class="btn btn-danger" (click)="deleteRoutine()">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sin rutinas -->
+  <div *ngIf="!loading && routines.length === 0" class="text-center my-5">
+    <div class="alert alert-info">
+      <h4>No tienes rutinas guardadas</h4>
+      <p>Crea tu primera rutina de aprendizaje haciendo clic en "Nueva Rutina"</p>
+    </div>
+  </div>
+
+  <!-- Lista de rutinas -->
+  <div *ngIf="!loading && routines.length > 0" class="row">
+    <div class="col-md-12">
+      <div class="card mb-4" *ngFor="let routine of routines">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">{{ routine.name }}</h5>
+          <div>
+            <button class="btn btn-sm btn-outline-primary me-2" (click)="viewRoutine(routine._id)">
+              <i class="bi bi-eye"></i> Ver
+            </button>
+            <button class="btn btn-sm btn-outline-secondary me-2" (click)="editRoutine(routine._id)">
+              <i class="bi bi-pencil"></i> Editar
+            </button>
+            <button class="btn btn-sm btn-outline-danger" (click)="confirmDelete(routine._id)">
+              <i class="bi bi-trash"></i> Eliminar
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <!-- Barra de progreso de horas -->
+          <div class="mb-3" *ngIf="getInterestForRoutine(routine)">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <span class="text-muted">Horas: </span>
+                <span [ngClass]="{'text-danger': calculateRoutineHours(routine) > getInterestForRoutine(routine)?.hoursPerWeek, 'text-success': calculateRoutineHours(routine) <= getInterestForRoutine(routine)?.hoursPerWeek}">
+                  {{ calculateRoutineHours(routine).toFixed(1) }} / {{ getInterestForRoutine(routine)?.hoursPerWeek }}
+                </span>
+              </div>
+              <div class="progress" style="width: 60%;">
+                <div class="progress-bar" role="progressbar" 
+                     [ngClass]="{'bg-danger': calculateRoutineHours(routine) > getInterestForRoutine(routine)?.hoursPerWeek}"
+                     [style.width.%]="(calculateRoutineHours(routine) / getInterestForRoutine(routine)?.hoursPerWeek) * 100">
+                  {{ ((calculateRoutineHours(routine) / getInterestForRoutine(routine)?.hoursPerWeek) * 100).toFixed(0) }}%
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-3">
+            <h6>Actividades: {{ routine.activities?.length || 0 }}</h6>
+            <div class="row">
+              <div class="col-md-6" *ngFor="let activity of routine.activities?.slice(0, 2)">
+                <div class="card mb-2">
+                  <div class="card-body py-2">
+                    <p class="mb-1"><strong>{{ activity.day }}</strong>: {{ activity.startTime }} - {{ activity.endTime }}</p>
+                    <p class="mb-0 text-truncate">{{ activity.description }}</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+        <div class="card-footer text-muted">
+          <small>Actualizado: {{ routine.updatedAt | date:'dd/MM/yyyy HH:mm' }}</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,93 @@
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h4>Dashboard</h4>
+          <div>
+            <a routerLink="/profile" class="btn btn-outline-primary me-2">Mi Perfil</a>
+            <button class="btn btn-danger" (click)="logout()">Cerrar Sesión</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div *ngIf="user">
+            <h5>¡Bienvenido, {{ user.name }}!</h5>
+            <p>Este es tu panel de control. Aquí podrás gestionar tus rutinas de aprendizaje.</p>
+            
+            <div class="row mt-4">
+              <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                  <div class="card-body text-center">
+                    <i class="bi bi-calendar3 fs-1 text-primary mb-3"></i>
+                    <h5 class="card-title">Mis Rutinas</h5>
+                    <p class="card-text">Gestiona todas tus rutinas de aprendizaje personalizadas.</p>
+                    <a routerLink="/routines" class="btn btn-primary">Ver Rutinas</a>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                  <div class="card-body text-center">
+                    <i class="bi bi-plus-circle fs-1 text-success mb-3"></i>
+                    <h5 class="card-title">Nueva Rutina</h5>
+                    <p class="card-text">Crea una nueva rutina de aprendizaje personalizada.</p>
+                    <a routerLink="/routine-editor" class="btn btn-success">Crear Rutina</a>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                  <div class="card-body text-center">
+                    <i class="bi bi-person-circle fs-1 text-info mb-3"></i>
+                    <h5 class="card-title">Mi Perfil</h5>
+                    <p class="card-text">Actualiza tu información de perfil y preferencias.</p>
+                    <a routerLink="/profile" class="btn btn-info">Editar Perfil</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div *ngIf="!user" class="text-center py-5">
+            <div class="spinner-border" role="status">
+              <span class="visually-hidden">Cargando...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Sección de rutinas recientes -->
+      <div *ngIf="user" class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Mis Rutinas Recientes</h5>
+          <a routerLink="/routines" class="btn btn-sm btn-light">Ver todas</a>
+        </div>
+        <div class="card-body">
+          <div *ngIf="loading" class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Cargando...</span>
+            </div>
+          </div>
+          
+          <div *ngIf="!loading && routines && routines.length > 0" class="list-group">
+            <a *ngFor="let routine of routines.slice(0, 3)" [routerLink]="['/routine', routine._id]" class="list-group-item list-group-item-action">
+              <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">{{ routine.name }}</h5>
+                <small>{{ routine.updatedAt | date:'short' }}</small>
+              </div>
+              <p class="mb-1" *ngIf="routine.description">{{ routine.description }}</p>
+              <small>{{ routine.activities?.length || 0 }} actividades</small>
+            </a>
+          </div>
+          
+          <div *ngIf="!loading && (!routines || routines.length === 0)" class="alert alert-info">
+            <p class="mb-0">No tienes rutinas creadas. <a routerLink="/routine-editor" class="alert-link">¡Crea tu primera rutina ahora!</a></p>
+          </div>
+          
+          <div *ngIf="error" class="alert alert-danger mt-3">
+            {{ error }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

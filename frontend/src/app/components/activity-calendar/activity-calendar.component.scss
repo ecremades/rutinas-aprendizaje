@@ -1,0 +1,66 @@
+// Estilos básicos para el calendario
+.table-responsive {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+  padding: 0.5rem;
+  width: 100%;
+  border: 1px solid #dee2e6;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #f8f9fa;
+  font-weight: bold;
+  text-align: center;
+  padding: 12px 8px;
+  border: 1px solid #dee2e6;
+}
+
+// Estilos mejorados para las celdas del calendario
+td {
+  height: 60px;
+  vertical-align: middle;
+  text-align: center;
+  font-size: 0.9rem;
+  position: relative;
+  border: 1px solid #dee2e6;
+  padding: 8px;
+}
+
+// Estilo especial para las celdas con actividades
+.calendar-cell {
+  &:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+  }
+}
+
+// Estilo para el nombre de la actividad
+.activity-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #495057;
+  text-align: center;
+  padding: 4px;
+  border-radius: 4px;
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+// Estilo para el enlace dentro de la celda
+a.stretched-link {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: auto;
+  content: "";
+  background-color: rgba(0,0,0,0);
+}

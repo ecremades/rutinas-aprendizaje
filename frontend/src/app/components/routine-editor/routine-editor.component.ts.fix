@@ -1,0 +1,436 @@
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { RoutineService } from '../../services/routine.service';
+import { ProfileService } from '../../services/profile.service';
+
+@Component({
+  selector: 'app-routine-editor',
+  templateUrl: './routine-editor.component.html',
+  styleUrls: ['./routine-editor.component.scss'],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  standalone: true
+})
+export class RoutineEditorComponent implements OnInit {
+  routineForm: FormGroup;
+  loading = false;
+  submitting = false;
+  error = '';
+  routineId: string | null = null;
+  isEditMode = false;
+  userInterests: any[] = [];
+
+  constructor(
+    private fb: FormBuilder,
+    private routineService: RoutineService,
+    private profileService: ProfileService,
+    private route: ActivatedRoute,
+    private router: Router
+  ) {
+    this.routineForm = this.fb.group({
+      name: ['', [Validators.required]],
+      interestId: ['', [Validators.required]],
+      activities: this.fb.array([])
+    });
+  }
+
+  ngOnInit(): void {
+    this.routineId = this.route.snapshot.paramMap.get('id');
+    this.isEditMode = !!this.routineId;
+
+    // Cargar los intereses del perfil del usuario
+    this.loadUserInterests();
+
+    // Escuchar cambios en el interés seleccionado
+    this.routineForm.get('interestId')?.valueChanges.subscribe(value => {
+      console.log('Interés cambiado:', value);
+      
+      // Limpiar error previo de horas
+      if (this.error && this.error.includes('horas')) {
+        this.error = '';
+      }
+      
+      // Si no estamos en modo edición, reiniciar las actividades
+      if (!this.isEditMode) {
+        this.resetActivities();
+      }
+      
+      // Validar horas disponibles con el nuevo interés
+      this.validateAvailableHours();
+    });
+
+    if (this.isEditMode && this.routineId) {
+      this.loadRoutine(this.routineId);
+    } else {
+      // Si es modo creación, añadir una actividad vacía
+      this.addActivity();
+    }
+  }
+
+  // Cargar intereses del perfil del usuario
+  loadUserInterests(): void {
+    this.loading = true;
+    this.profileService.getProfile().subscribe({
+      next: (profile) => {
+        if (profile && profile.interests && profile.interests.length > 0) {
+          this.userInterests = profile.interests;
+          console.log('Intereses cargados:', this.userInterests);
+        } else {
+          this.error = 'No hay intereses definidos en el perfil. Por favor, define intereses en tu perfil primero.';
+        }
+        this.loading = false;
+      },
+      error: (err) => {
+        if (err.status === 404) {
+          this.error = 'No se encontró un perfil. Por favor, crea tu perfil primero.';
+        } else {
+          this.error = 'Error al cargar el perfil';
+        }
+        this.loading = false;
+      }
+    });
+  }
+
+  // Cargar una rutina existente
+  loadRoutine(id: string): void {
+    this.loading = true;
+    this.routineService.getRoutine(id).subscribe({
+      next: (routine) => {
+        // Esperar a que los intereses se carguen antes de asignar valores
+        if (this.userInterests.length === 0) {
+          const profileSubscription = this.profileService.getProfile().subscribe({
+            next: (profile) => {
+              if (profile && profile.interests) {
+                this.userInterests = profile.interests;
+                this.setRoutineFormValues(routine);
+              }
+              profileSubscription.unsubscribe();
+            },
+            error: (err) => {
+              this.error = 'Error al cargar el perfil';
+              this.loading = false;
+              profileSubscription.unsubscribe();
+            }
+          });
+        } else {
+          this.setRoutineFormValues(routine);
+        }
+      },
+      error: (err) => {
+        this.error = 'Error al cargar la rutina';
+        this.loading = false;
+      }
+    });
+  }
+
+  // Establecer los valores del formulario con los datos de la rutina
+  setRoutineFormValues(routine: any): void {
+    this.routineForm.patchValue({
+      name: routine.name,
+      interestId: routine.interestId || ''
+    });
+
+    // Limpiar y añadir las actividades existentes
+    this.activitiesArray.clear();
+    if (routine.activities && routine.activities.length > 0) {
+      routine.activities.forEach((activity: any) => {
+        const activityGroup = this.fb.group({
+          day: [activity.day, Validators.required],
+          startTime: [activity.startTime, Validators.required],
+          endTime: [activity.endTime, Validators.required],
+          description: [activity.description || 'Actividad programada', Validators.required]
+        });
+
+        // Añadir listeners para validar cuando cambian los tiempos
+        activityGroup.get('startTime')?.valueChanges.subscribe(() => {
+          this.validateTimeChange();
+        });
+
+        activityGroup.get('endTime')?.valueChanges.subscribe(() => {
+          this.validateTimeChange();
+        });
+
+        this.activitiesArray.push(activityGroup);
+      });
+    } else {
+      // Si no hay actividades, añadir una vacía
+      this.addActivity();
+    }
+
+    this.loading = false;
+  }
+
+  // Getter para acceder al FormArray de actividades
+  get activitiesArray(): FormArray {
+    return this.routineForm.get('activities') as FormArray;
+  }
+
+  // Crear un grupo de formulario para una actividad
+  createActivity(): FormGroup {
+    const activityGroup = this.fb.group({
+      day: ['Lunes', Validators.required],  // Valor por defecto para que el formulario sea válido
+      startTime: ['08:00', Validators.required],  // Valor por defecto para que el formulario sea válido
+      endTime: ['09:00', Validators.required],  // Valor por defecto para que el formulario sea válido
+      description: ['Actividad programada', Validators.required]  // Descripción por defecto
+    });
+
+    // Añadir listeners para validar cuando cambian los tiempos
+    activityGroup.get('startTime')?.valueChanges.subscribe(() => {
+      this.validateTimeChange();
+    });
+
+    activityGroup.get('endTime')?.valueChanges.subscribe(() => {
+      this.validateTimeChange();
+    });
+
+    return activityGroup;
+  }
+
+  // Validar cambios de tiempo
+  validateTimeChange(): void {
+    // Limpiar error previo de horas
+    if (this.error && this.error.includes('horas')) {
+      this.error = '';
+    }
+
+    // Validar horas disponibles
+    this.validateAvailableHours();
+  }
+
+  // Reiniciar las actividades (mantener solo una actividad vacía)
+  resetActivities(): void {
+    // Guardar el interés seleccionado
+    const selectedInterestId = this.routineForm.get('interestId')?.value;
+    
+    // Limpiar las actividades existentes
+    this.activitiesArray.clear();
+    
+    // Añadir una actividad vacía
+    this.addActivity();
+    
+    console.log('Actividades reiniciadas para el interés:', selectedInterestId);
+  }
+
+  // Añadir una nueva actividad al formulario
+  addActivity(): void {
+    this.activitiesArray.push(this.createActivity());
+  }
+
+  // Validar y añadir una actividad
+  validateAndAddActivity(index?: number): void {
+    // Validar que todas las actividades actuales sean válidas
+    let hasInvalidActivity = false;
+    this.activitiesArray.controls.forEach((control: any) => {
+      if (control.invalid) {
+        hasInvalidActivity = true;
+        // Marcar todos los campos como tocados para mostrar errores
+        Object.keys(control.controls).forEach(key => {
+          control.get(key)?.markAsTouched();
+        });
+      }
+    });
+
+    if (hasInvalidActivity) {
+      this.error = 'Hay actividades con campos incompletos. Por favor, revisa todas las actividades antes de añadir una nueva.';
+      return;
+    }
+
+    // Validar horas disponibles
+    if (!this.validateAvailableHours()) {
+      return;
+    }
+
+    // Si todo es válido, añadir una nueva actividad
+    this.addActivity();
+    this.error = ''; // Limpiar errores previos
+    
+    console.log('Actividad validada y añadida correctamente');
+    if (index !== undefined) {
+      console.log('Actividad añadida desde el índice:', index);
+    }
+  }
+
+  // Eliminar una actividad del formulario
+  removeActivity(index: number): void {
+    this.activitiesArray.removeAt(index);
+    
+    // Si no quedan actividades, añadir una vacía
+    if (this.activitiesArray.length === 0) {
+      this.addActivity();
+    }
+    
+    // Validar horas disponibles después de eliminar
+    this.validateAvailableHours();
+  }
+
+  // Obtener el interés seleccionado
+  getSelectedInterest(): any {
+    const interestId = this.routineForm.get('interestId')?.value;
+    if (!interestId || !this.userInterests || this.userInterests.length === 0) {
+      return null;
+    }
+    
+    return this.userInterests.find(interest => interest._id === interestId);
+  }
+
+  // Calcular el total de horas de las actividades
+  calculateTotalHours(): number {
+    let totalMinutes = 0;
+    
+    this.activitiesArray.controls.forEach((control: any) => {
+      const startTime = control.get('startTime')?.value;
+      const endTime = control.get('endTime')?.value;
+      
+      if (startTime && endTime) {
+        const startMinutes = this.timeToMinutes(startTime);
+        const endMinutes = this.timeToMinutes(endTime);
+        
+        if (endMinutes > startMinutes) {
+          totalMinutes += (endMinutes - startMinutes);
+        }
+      }
+    });
+    
+    return totalMinutes / 60; // Convertir minutos a horas
+  }
+
+  // Convertir tiempo en formato HH:MM a minutos
+  timeToMinutes(time: string): number {
+    if (!time) return 0;
+    
+    const [hours, minutes] = time.split(':').map(Number);
+    return (hours * 60) + minutes;
+  }
+
+  // Validar que las horas de las actividades no excedan las disponibles para el interés
+  validateAvailableHours(): boolean {
+    const selectedInterest = this.getSelectedInterest();
+    if (!selectedInterest) {
+      return true; // No hay interés seleccionado, no validar
+    }
+    
+    const availableHours = selectedInterest.hoursPerWeek || 0;
+    const totalHours = this.calculateTotalHours();
+    
+    console.log('Validando horas:', { 
+      interés: selectedInterest.name, 
+      horasDisponibles: availableHours, 
+      horasUtilizadas: totalHours 
+    });
+    
+    if (totalHours > availableHours) {
+      this.error = `Las actividades suman ${totalHours.toFixed(1)} horas, pero solo tienes ${availableHours} horas disponibles para el interés "${selectedInterest.name}".`;
+      return false;
+    } else {
+      // Solo limpiar el error si era un error de horas
+      if (this.error && this.error.includes('horas')) {
+        this.error = '';
+      }
+    }
+
+    return true;
+  }
+
+  // Calcular el total de horas utilizadas para mostrar en la interfaz
+  calculateTotalHoursUsed(): number {
+    return this.calculateTotalHours();
+  }
+
+  // Enviar formulario
+  onSubmit(): void {
+    // Validar horas disponibles
+    if (!this.validateAvailableHours()) {
+      return;
+    }
+    
+    if (this.routineForm.valid) {
+      this.submitting = true;
+      
+      // Verificar que haya actividades
+      if (this.activitiesArray.length === 0) {
+        this.error = 'Debes añadir al menos una actividad';
+        this.submitting = false;
+        return;
+      }
+      
+      // Validar que todas las actividades sean válidas
+      let hasInvalidActivity = false;
+      this.activitiesArray.controls.forEach((control: any) => {
+        if (control.invalid) {
+          hasInvalidActivity = true;
+          // Marcar todos los campos como tocados para mostrar errores
+          Object.keys(control.controls).forEach(key => {
+            control.get(key)?.markAsTouched();
+          });
+        }
+      });
+      
+      if (hasInvalidActivity) {
+        this.error = 'Hay actividades con campos incompletos. Por favor, revisa todas las actividades.';
+        this.submitting = false;
+        return;
+      }
+      
+      // Obtener el interés seleccionado para incluir información adicional
+      const selectedInterest = this.getSelectedInterest();
+      
+      // Preparar los datos de la rutina, asegurándonos de que las actividades se incluyan correctamente
+      const routineData = {
+        name: this.routineForm.get('name')?.value,
+        interestId: this.routineForm.get('interestId')?.value,
+        interestName: selectedInterest ? selectedInterest.name : '',
+        activities: this.activitiesArray.controls.map(control => ({
+          day: control.get('day')?.value,
+          startTime: control.get('startTime')?.value,
+          endTime: control.get('endTime')?.value,
+          description: control.get('description')?.value || 'Actividad programada'
+        }))
+      };
+      
+      console.log('Enviando datos de rutina:', routineData);
+
+      if (this.isEditMode && this.routineId) {
+        this.routineService.updateRoutine(this.routineId, routineData).subscribe({
+          next: () => {
+            this.submitting = false;
+            this.router.navigate(['/routines']);
+          },
+          error: (err) => {
+            this.error = 'Error al actualizar la rutina';
+            this.submitting = false;
+          }
+        });
+      } else {
+        this.routineService.createRoutine(routineData).subscribe({
+          next: () => {
+            this.submitting = false;
+            this.router.navigate(['/routines']);
+          },
+          error: (err) => {
+            this.error = 'Error al crear la rutina';
+            this.submitting = false;
+          }
+        });
+      }
+    } else {
+      // Marcar todos los campos como tocados para mostrar errores
+      Object.keys(this.routineForm.controls).forEach(key => {
+        const control = this.routineForm.get(key);
+        control?.markAsTouched();
+      });
+
+      // Marcar campos de actividades como tocados
+      this.activitiesArray.controls.forEach(control => {
+        Object.keys((control as FormGroup).controls).forEach(key => {
+          (control as FormGroup).get(key)?.markAsTouched();
+        });
+      });
+    }
+  }
+
+  // Método para cancelar la edición
+  cancel(): void {
+    this.router.navigate(['/routines']);
+  }
+}
